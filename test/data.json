@@ -1,0 +1,7 @@
+{
+    "fun" : "8*(pi^2)*sin(pi*x)*cos(pi*y)",
+    "n" :   "10",
+    "n_task" : "3",
+    "max_it" : "1e6",
+    "Tol" : "1e-6"
+}
