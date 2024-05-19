@@ -10,4 +10,6 @@ In the folder src there is a MakeFile that use a the macro PACS_ROOT.
 1. In case you do not have that variables before running the code on terminale you must digit export PACS_ROOT=complete_path_to_pacs-exampples_folder/Examples. for having the full path it is enought to go in our local repository pacs-examples/Examples and on terminal digits pwd
 2. In case your device is a MAC book and you use docker for having the linux machine you also must set the variable LD_LIBRARY_PATH. On the terminal you have to write export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/full-path/to/the/library in our case will be the sub folder lib of pacs-examples/Examples
 3. Now in Challenge3/src you can do make on terminal 
+4. For run in parallel you must digit on the terminal: mpirun -np 4 ./main 
+you can decide the number of processor, just for example i put 4 in the command. If you want run in the serial version it is enough to write in the bash ./main 
 

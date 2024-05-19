@@ -1,8 +1,8 @@
-CXX      ?= g++
-CXXFLAGS ?= -std=c++20
+CXX      ?= mpic++
+CXXFLAGS ?= -std=c++20 -fopenmp
 CPPFLAGS ?= -g -Wall -pedantic -I. -I$(PACS_ROOT)/include -I ../test -I${mkEigenInc}
 LDFLAGS  ?= -L$(PACS_ROOT)/src/Utities -L$(PACS_ROOT)/lib
-LDLIBS   ?= -lmuparser
+LDLIBS   ?= -lmuparser -lmpi 
 LINK.o := $(LINK.cc) # Use C++ linker.
 
 DEPEND = make.dep
