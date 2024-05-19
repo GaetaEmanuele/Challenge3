@@ -33,9 +33,10 @@ class JacobianSolver {
         Solution local_Force;
         Eigen::RowVectorXd xn= Eigen::RowVectorXd::LinSpaced(dim, x0, xN);
         //number of parallel task (0 is the defual value)
-        int task=0;
+        int task=1;
         void split_solution();
         void join_solution();
+        void perform_communications(Eigen::VectorXd& row_under_sent, Eigen::VectorXd& row_over_sent,Eigen::VectorXd& row_under_receive, Eigen::VectorXd& row_over_receive);
     public:
         //the constructor that will be called by the serial version
         JacobianSolver(const Fun& f_,double max_it_,double tol,unsigned int dim_):f(f_),max_it(max_it_),eps(tol),dim(dim_){};

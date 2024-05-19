@@ -28,6 +28,8 @@ namespace edp{
 
     double JacobianSolver :: compute_error(const Solution& res,const Solution& old_res){
         double error=0.0;
+
+        #pragma omp parallel for num_threads(task) collapse(2)
         for(std::size_t i=0;i<local_n_row;++i){
             for(std::size_t j=0;j<dim;++j){
                 error += (res(i,j)-old_res(i,j))*(res(i,j)-old_res(i,j));
@@ -60,23 +62,9 @@ namespace edp{
             Eigen::VectorXd row_over_sent(dim);
             Eigen::VectorXd row_under_recive(dim);
             Eigen::VectorXd row_over_recive(dim);
-
-            if(mpi_rank == 0){
-                row_over_sent = res_loc.row(local_n_row-1);
-                MPI_Send(row_over_sent.data(), dim,MPI_DOUBLE , 1, 0, MPI_COMM_WORLD);
-                MPI_Recv(row_over_recive.data(), dim, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            }else if(mpi_size > 2 and mpi_rank < (mpi_size-1)){
-                MPI_Recv(row_under_recive.data(), dim, MPI_DOUBLE, mpi_rank-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                row_under_sent = res_loc.row(0);
-                MPI_Send(row_under_sent.data(), dim,MPI_DOUBLE , mpi_rank-1, 1, MPI_COMM_WORLD);
-                row_over_sent = res_loc.row(local_n_row-1);
-                MPI_Send(row_over_sent.data(), dim,MPI_DOUBLE , mpi_rank+1, 0, MPI_COMM_WORLD);
-                MPI_Recv(row_over_recive.data(), dim, MPI_DOUBLE, mpi_rank+1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            }else{
-                row_under_sent = res_loc.row(0);
-                MPI_Recv(row_under_recive.data(), dim, MPI_DOUBLE, mpi_rank-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                MPI_Send(row_under_sent.data(), dim,MPI_DOUBLE , mpi_rank-1, 1, MPI_COMM_WORLD);
-            }
+            //MPI_Request request1;
+            //MPI_Request request2;
+            perform_communications(row_under_sent,row_over_sent,row_under_recive,row_over_recive);
             if(mpi_rank==0){
                 for(std::size_t i=1;i<local_n_row;++i){
                     for(std::size_t j=1;j<dim-1;++j){
@@ -145,6 +133,7 @@ namespace edp{
         if(mpi_rank ==0){
             auto chunk = dim/mpi_size;
             auto rest  = dim%mpi_size;
+            #pragma omp parallel for num_threads(task)
             for (auto i=0;i<mpi_size;++i){
                 count_recv[i]= i<rest? chunk+1: chunk;
                 }
@@ -165,6 +154,7 @@ namespace edp{
                
         local_Force = Solution::Zero(local_n_row,dim);
 
+        #pragma omp parallel for num_threads(task) collapse(2)
         for(std::size_t i=0;i<local_n_row;++i){
             for(std::size_t j=0;j<dim;++j){
                 auto x = xn(j);
@@ -174,27 +164,62 @@ namespace edp{
         }
     }
 
- void JacobianSolver:: join_solution(){
+  void JacobianSolver:: join_solution(){
     int mpi_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
 
     int mpi_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size); 
-    int local_size = local_n_row * dim;
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     auto nrow = 0;
-    for(std::size_t i=0;i< mpi_size;++i){
-        MPI_Barrier(MPI_COMM_WORLD);
-
-        if (mpi_rank == i) {
-            // rank i update the matrix
-            res.block(nrow, 0, local_n_row, dim) = res_loc;
-            nrow += local_n_row;
+    MPI_Request request1;
+    MPI_Request request2;
+    if(mpi_rank==0){
+        res.block(0, 0, local_n_row, dim) = res_loc;
+        nrow +=local_n_row;
+        for(std::size_t i=1;i<mpi_size;++i){
+            int local_size=0;
+            //MPI_Irecv(&local_size, 1, MPI_INT, i, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE,&request1);
+            MPI_Recv(&local_size, 1, MPI_INT, i, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            Solution loc_res(local_size,dim);
+            //MPI_Irecv(loc_res.data(), local_size*dim, MPI_DOUBLE, i, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE,&request2);
+            MPI_Recv(loc_res.data(), local_size*dim, MPI_DOUBLE, i, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            res.block(nrow, 0, local_size, dim) = loc_res;
+            nrow += local_size;
         }
+    }else{
+            //MPI_Isend(&local_n_row,1,MPI_INT , 0, mpi_rank, MPI_COMM_WORLD,&request1);
+            MPI_Send(&local_n_row,1,MPI_INT , 0, mpi_rank, MPI_COMM_WORLD);   
+            //MPI_Isend(&local_n_row,1,MPI_INT , 0, mpi_rank, MPI_COMM_WORLD,&request1);
+            MPI_Send(res_loc.data(),local_n_row*dim,MPI_DOUBLE , 0, mpi_rank, MPI_COMM_WORLD);
+    }
+    } 
 
-        // All Rank will update the matrix
-        MPI_Bcast(&nrow, 1, MPI_INT, i, MPI_COMM_WORLD);
-        MPI_Bcast(res.data(), res.rows() * res.cols(), MPI_DOUBLE, i, MPI_COMM_WORLD);
+void JacobianSolver::perform_communications(Eigen::VectorXd& row_under_sent, Eigen::VectorXd& row_over_sent,
+                                             Eigen::VectorXd& row_under_receive, Eigen::VectorXd& row_over_receive) {
+    int mpi_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+
+    int mpi_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+
+    if (mpi_rank == 0) {
+        row_over_sent = res_loc.row(local_n_row - 1);
+        MPI_Send(row_over_sent.data(), dim, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD);
+        MPI_Recv(row_over_receive.data(), dim, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    } else if (mpi_size > 2 && mpi_rank < (mpi_size - 1)) {
+        MPI_Recv(row_under_receive.data(), dim, MPI_DOUBLE, mpi_rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        row_under_sent = res_loc.row(0);
+        MPI_Send(row_under_sent.data(), dim, MPI_DOUBLE, mpi_rank - 1, 1, MPI_COMM_WORLD);
+        row_over_sent = res_loc.row(local_n_row - 1);
+        MPI_Send(row_over_sent.data(), dim, MPI_DOUBLE, mpi_rank + 1, 0, MPI_COMM_WORLD);
+        MPI_Recv(row_over_receive.data(), dim, MPI_DOUBLE, mpi_rank + 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    } else {
+        row_under_sent = res_loc.row(0);
+        MPI_Recv(row_under_receive.data(), dim, MPI_DOUBLE, mpi_rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Send(row_under_sent.data(), dim, MPI_DOUBLE, mpi_rank - 1, 1, MPI_COMM_WORLD);
     }
-    }
+}
+
+
  }
 
