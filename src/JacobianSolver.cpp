@@ -155,12 +155,12 @@ namespace edp{
         }
         MPI_Scatter(count_recv.data(),1,MPI_INT, &local_n_row,1,MPI_INT,0,MPI_COMM_WORLD);
         res_loc = Solution::Zero(local_n_row,dim);
-        std::size_t j;
+        std::size_t j=0;
         MPI_Scatter(displacements.data(),1,MPI_INT, &j,1,MPI_INT,0,MPI_COMM_WORLD);
         Eigen::RowVectorXd xn_loc(local_n_row);
         for(std::size_t i=0;i<local_n_row;++i){
-            j += i;
             xn_loc(i)=xn(j);
+            ++j;
         }
                
         local_Force = Solution::Zero(local_n_row,dim);
