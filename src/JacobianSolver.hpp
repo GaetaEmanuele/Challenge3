@@ -8,6 +8,7 @@
 #include <vector>
 #include <mpi.h>
 #include <omp.h>
+#include "chrono.hpp"
 
 namespace edp{
 using Solution = Eigen::MatrixXd;
@@ -36,7 +37,7 @@ class JacobianSolver {
         int task=1;
         void split_solution();
         void join_solution();
-        void perform_communications(Eigen::VectorXd& row_under_sent, Eigen::VectorXd& row_over_sent,Eigen::VectorXd& row_under_receive, Eigen::VectorXd& row_over_receive);
+        void perform_communications(const int& mpi_rank,const int& mpi_size,Eigen::VectorXd& row_under_sent, Eigen::VectorXd& row_over_sent,Eigen::VectorXd& row_under_receive, Eigen::VectorXd& row_over_receive);
     public:
         //the constructor that will be called by the serial version
         JacobianSolver(const Fun& f_,double max_it_,double tol,unsigned int dim_):f(f_),max_it(max_it_),eps(tol),dim(dim_){};
@@ -46,6 +47,8 @@ class JacobianSolver {
         Solution solve_in_parallel();
         bool is_converged()const {return convergence;} ;
         Eigen::VectorXd get_nodes()const{return xn;};
+        Timings::Chrono chrono; //this is used by the programmer for trying to understnd 
+        //what part of the solution is the bottleneck of the performance
 
 };
 }

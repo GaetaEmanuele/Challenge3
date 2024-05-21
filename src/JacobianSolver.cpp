@@ -56,6 +56,7 @@ namespace edp{
         //the initialiation of the forcing term is done in parrallel with openMP
         //since each iteration is indipendent from the other
         unsigned int iter=0;
+        chrono.start(); 
         while(iter < max_it){
             Solution old_res = res_loc;
             Eigen::VectorXd row_under_sent(dim);
@@ -64,7 +65,7 @@ namespace edp{
             Eigen::VectorXd row_over_recive(dim);
             //MPI_Request request1;
             //MPI_Request request2;
-            perform_communications(row_under_sent,row_over_sent,row_under_recive,row_over_recive);
+            perform_communications(mpi_rank,mpi_size,row_under_sent,row_over_sent,row_under_recive,row_over_recive);
             if(mpi_rank==0){
                 for(std::size_t i=1;i<local_n_row;++i){
                     for(std::size_t j=1;j<dim-1;++j){
@@ -72,7 +73,8 @@ namespace edp{
                             res_loc(i,j) = 0.25 * (res_loc(i-1,j)+row_over_recive(j)+res_loc(i,j-1)+res_loc(i,j+1)+h*h*local_Force(i,j));
                         }else{
                         res_loc(i,j) = 0.25 * (res_loc(i-1,j)+res_loc(i+1,j)+res_loc(i,j-1)+res_loc(i,j+1)+h*h*local_Force(i,j));
-                    }}
+                    }
+                    }
                 }
             }else if(mpi_size>2 and mpi_rank>0 and mpi_rank<(mpi_size-1)){
                 for(std::size_t i=0;i<local_n_row;++i){
@@ -101,6 +103,8 @@ namespace edp{
                 }
             }
             }
+
+            //work on the first row or on the last row
             double error = compute_error(res_loc,old_res);
             int global_convergence = 0;
             int convergence_int = convergence ? 1 : 0;
@@ -112,6 +116,7 @@ namespace edp{
             }
             ++iter;
         }
+    chrono.stop();
     join_solution();
     return res;
 
@@ -171,8 +176,8 @@ namespace edp{
     int mpi_size;
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     auto nrow = 0;
-    MPI_Request request1;
-    MPI_Request request2;
+    //MPI_Request request1;
+    //MPI_Request request2;
     if(mpi_rank==0){
         res.block(0, 0, local_n_row, dim) = res_loc;
         nrow +=local_n_row;
@@ -194,14 +199,10 @@ namespace edp{
     }
     } 
 
-void JacobianSolver::perform_communications(Eigen::VectorXd& row_under_sent, Eigen::VectorXd& row_over_sent,
+void JacobianSolver::perform_communications(const int& mpi_rank,const int& mpi_size,Eigen::VectorXd& row_under_sent, Eigen::VectorXd& row_over_sent,
                                              Eigen::VectorXd& row_under_receive, Eigen::VectorXd& row_over_receive) {
-    int mpi_rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-
-    int mpi_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-
+//Since this function will be called in a iterative loop 
+//i will pass the information of rank and size since this will reduce the time needed 
     if (mpi_rank == 0) {
         row_over_sent = res_loc.row(local_n_row - 1);
         MPI_Send(row_over_sent.data(), dim, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD);

@@ -66,17 +66,18 @@ int main (int argc, char **argv){
         if(mpi_rank==0){
             std::cout<<"PARALLEL VERSION"<<std::endl;
         }
-        unsigned int DIM,task;
+        unsigned int DIM,task,size_f;
         double max_it,tollerance;
+        std::string funString;
         if(mpi_rank==0){
             std::ifstream file("../test/data.json");
             json Data = json::parse(file);
-            //funString = data["fun"];
+            funString = Data["fun"];
             DIM = std::stoi(Data["n"].get<std::string>());
             task = std::stoi(Data["n_task"].get<std::string>());
             max_it = std::stod(Data["max_it"].get<std::string>());
             tollerance = std::stod(Data["Tol"].get<std::string>());
-            //size_f = funString.size();
+            size_f = funString.size();
         }
         //MPI_Bcast(&size_f, 1, MPI_INT, 0, mpi_comm);
         //MPI_Bcast(&funString,size_f,MPI_CHAR,0,mpi_comm);
@@ -84,6 +85,7 @@ int main (int argc, char **argv){
         MPI_Bcast(&task, 1, MPI_INT, 0, mpi_comm);
         MPI_Bcast(&max_it, 1, MPI_DOUBLE, 0, mpi_comm);
         MPI_Bcast(&tollerance, 1, MPI_DOUBLE, 0, mpi_comm);
+        //MuparserFun F(funString);
     
         edp :: JacobianSolver solver2(F,max_it,tollerance,DIM,task);
         chrono.start();
