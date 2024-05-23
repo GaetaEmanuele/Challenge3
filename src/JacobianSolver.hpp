@@ -9,14 +9,11 @@
 #include <mpi.h>
 #include <omp.h>
 #include "chrono.hpp"
-
+#include "JacobianTraits.hpp"
 namespace edp{
-using Solution = Eigen::MatrixXd;
 
 class JacobianSolver {
     private:
-        //wrapper of the forcing term
-        using Fun = std :: function<double(const double&,const double&)>;
         Fun f;
         double max_it;
         double eps;
@@ -25,7 +22,7 @@ class JacobianSolver {
         unsigned int dim;
         unsigned int local_n_row = dim;
         //space discretization step
-        double h = 1/(static_cast<double>(dim-1));
+        double h = 1.0/(static_cast<double>(dim-1));
         double x0=0;
         double xN=1;
         Solution res = Solution::Zero(dim, dim);

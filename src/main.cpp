@@ -10,12 +10,16 @@
 #include <mpi.h>
 #include <omp.h>
 #include "chrono.hpp"
+#include "convergence_test.hpp"
 
 using json = nlohmann::json;
 
 
 double F(const double& x,const double& y){
     return 8*M_PI*M_PI*(std::sin(M_PI*x))*(std::cos(M_PI*y));
+}
+double Uex(const double& x,const double& y){
+    return std::sin(2*M_PI*x)*std::cos(2*M_PI*y);
 }
 
 int main (int argc, char **argv){
@@ -29,6 +33,10 @@ int main (int argc, char **argv){
 
     int mpi_size;
     MPI_Comm_size(mpi_comm, &mpi_size);
+    Eigen::RowVectorXd n(5) ;
+    for(std::size_t i=0;i<5;++i){
+        n(i) = std::pow(2,i+4);
+    }
     if(mpi_size == 1){
         //this is the serial version//
         std::cout<<"SERIAL VERSION"<<std::endl;
@@ -47,7 +55,8 @@ int main (int argc, char **argv){
         Eigen::VectorXd yn = xn;
         std::cout<<"The procedure requires: "<<chrono.wallTime()<<" micsec"<<std::endl;
         std::string relativePath = "../test/Data/serial_result.txt";
-
+        edp::convergence_test Test(Uex,F,n,mpi_size);
+        Test.plot();
         //Definitio of the targhet 
         std::ofstream outFile(relativePath);
     
@@ -86,13 +95,12 @@ int main (int argc, char **argv){
         MPI_Bcast(&max_it, 1, MPI_DOUBLE, 0, mpi_comm);
         MPI_Bcast(&tollerance, 1, MPI_DOUBLE, 0, mpi_comm);
         //MuparserFun F(funString);
-    
         edp :: JacobianSolver solver2(F,max_it,tollerance,DIM,task);
         chrono.start();
         edp::Solution result = solver2.solve_in_parallel();
         chrono.stop();
         std::string relativePath = "../test/Data/parallel_result.txt";
-
+        edp::convergence_test Test(Uex,F,n,mpi_size,task);
         //Definition of the targhet 
         if(mpi_rank==0){
             std::ofstream outFile(relativePath);
@@ -107,6 +115,7 @@ int main (int argc, char **argv){
             }
             //std::cout << result << std::endl;
         }
+        Test.plot();
     }
     MPI_Finalize();
 
