@@ -11,7 +11,7 @@
 #include <omp.h>
 #include "chrono.hpp"
 #include "convergence_test.hpp"
-
+#include "Schwartz.hpp"
 using json = nlohmann::json;
 
 
@@ -48,7 +48,10 @@ int main (int argc, char **argv){
         double eps = std::stod(data["Tol"].get<std::string>());
         //MuparserFun F(funString);
         edp :: JacobianSolver solver(F,it,eps,dim);
+        edp :: Schwartz solver1(F,it,eps,dim);
         edp :: Solution  result = solver.solve();
+        std::cout<<solver1.solve()<<std::endl;
+        std::cout<<std::endl;
         chrono.start();
         Eigen::VectorXd xn = solver.get_nodes();
         chrono.stop();

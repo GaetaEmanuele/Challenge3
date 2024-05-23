@@ -8,5 +8,6 @@ namespace edp{
 using Solution = Eigen::MatrixXd;
 //wrapper of the forcing term
 using Fun = std :: function<double(const double&,const double&)>;
+using Fun_boundary = std::function<double(const double&)>;
 }
 #endif /* JacobianTraits_HPP */

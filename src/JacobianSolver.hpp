@@ -13,7 +13,7 @@
 namespace edp{
 
 class JacobianSolver {
-    private:
+    protected:
         Fun f;
         double max_it;
         double eps;
@@ -32,7 +32,7 @@ class JacobianSolver {
         Eigen::RowVectorXd xn= Eigen::RowVectorXd::LinSpaced(dim, x0, xN);
         //number of parallel task (0 is the defual value)
         int task=1;
-        void split_solution();
+        virtual void split_solution();
         void join_solution();
         void perform_communications(const int& mpi_rank,const int& mpi_size,Eigen::VectorXd& row_under_sent, Eigen::VectorXd& row_over_sent,Eigen::VectorXd& row_under_receive, Eigen::VectorXd& row_over_receive);
     public:
@@ -40,8 +40,8 @@ class JacobianSolver {
         JacobianSolver(const Fun& f_,double max_it_,double tol,unsigned int dim_):f(f_),max_it(max_it_),eps(tol),dim(dim_){};
         //the constructor that will be called by the parallel one
         JacobianSolver(const Fun& f_,double max_it_,double tol,unsigned int dim_,int task_):f(f_),max_it(max_it_),eps(tol),dim(dim_),task(task_){};
-        Solution solve();
-        Solution solve_in_parallel();
+        virtual Solution solve();
+        virtual Solution solve_in_parallel();
         bool is_converged()const {return convergence;} ;
         Eigen::VectorXd get_nodes()const{return xn;};
         Timings::Chrono chrono; //this is used by the programmer for trying to understnd 
