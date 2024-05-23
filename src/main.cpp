@@ -16,10 +16,10 @@ using json = nlohmann::json;
 
 
 double F(const double& x,const double& y){
-    return 8*M_PI*M_PI*(std::sin(M_PI*x))*(std::cos(M_PI*y));
+    return 8*M_PI*M_PI*(std::sin(M_PI*x))*(std::sin(M_PI*y));
 }
 double Uex(const double& x,const double& y){
-    return std::sin(2*M_PI*x)*std::cos(2*M_PI*y);
+    return std::sin(2*M_PI*x)*std::sin(2*M_PI*y);
 }
 
 int main (int argc, char **argv){
