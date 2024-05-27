@@ -37,8 +37,8 @@ namespace edp{
         if(mpi_size ==1){
              Eigen::RowVectorXd xn = Eigen::RowVectorXd::LinSpaced(n, x0, xN);
              double sum=0.0;
-             for(std::size_t i=0;i<n;++i){
-                for(std::size_t j=0;j<n;++j){
+             for(std::size_t i=1;i<n-1;++i){
+                for(std::size_t j=1;j<n-1;++j){
                     auto x = xn(j);
                     auto y = xn(i);
                     double F = Forcing(x,y);

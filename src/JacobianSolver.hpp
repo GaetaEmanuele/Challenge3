@@ -44,6 +44,7 @@ class JacobianSolver {
         virtual Solution solve_in_parallel();
         bool is_converged()const {return convergence;} ;
         Eigen::VectorXd get_nodes()const{return xn;};
+        double get_h()const{return h;};
         Timings::Chrono chrono; //this is used by the programmer for trying to understnd 
         //what part of the solution is the bottleneck of the performance
 

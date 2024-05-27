@@ -12,6 +12,7 @@
 #include "chrono.hpp"
 #include "convergence_test.hpp"
 #include "Schwartz.hpp"
+#include "write_vtk.hpp"
 using json = nlohmann::json;
 
 
@@ -57,20 +58,13 @@ int main (int argc, char **argv){
         chrono.stop();
         Eigen::VectorXd yn = xn;
         std::cout<<"The procedure requires: "<<chrono.wallTime()<<" micsec"<<std::endl;
-        std::string relativePath = "../test/Data/serial_result.txt";
+ 
+        std::string relativePath = "../test/Data/serial_result.vtk";
         edp::convergence_test Test(Uex,F,n,mpi_size);
         Test.plot();
         //Definitio of the targhet 
-        std::ofstream outFile(relativePath);
-    
-        if (outFile.is_open()) {
-            //Write in the file
-            outFile << result << std::endl;
-            outFile.close(); // Close the file after the writing
-            std::cout << "The result is stored inside: " << relativePath << std::endl;
-        } else {
-            std::cerr << "Error, The file cannot be opened: " << relativePath << std::endl;
-        }
+        double h = solver.get_h();
+        edp :: generateVTKFile(relativePath,result,dim,dim,h,h);
     }else{
         //Parallel verion//
         //in the parallel version i'm assuming that the file json is only 
@@ -102,21 +96,12 @@ int main (int argc, char **argv){
         chrono.start();
         edp::Solution result = solver2.solve_in_parallel();
         chrono.stop();
-        std::string relativePath = "../test/Data/parallel_result.txt";
+        std::string relativePath = "../test/Data/parallel_result.vtk";
         edp::convergence_test Test(Uex,F,n,mpi_size,task);
         //Definition of the targhet 
         if(mpi_rank==0){
-            std::ofstream outFile(relativePath);
-            std::cout<<"The procedure requires: "<<chrono.wallTime()<<" micsec"<<std::endl;
-            if (outFile.is_open()) {
-                //Write in the file
-                outFile << result << std::endl;
-                outFile.close(); // Close the file after the writing
-                std::cout << "The result is stored inside: " << relativePath << std::endl;
-            } else {
-                std::cerr << "Error, The file cannot be opened: " << relativePath << std::endl;
-            }
-            //std::cout << result << std::endl;
+            double h = solver2.get_h();
+            edp :: generateVTKFile(relativePath,result,DIM,DIM,h,h);
         }
         Test.plot();
     }

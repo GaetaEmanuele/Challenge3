@@ -11,7 +11,7 @@ namespace edp{
             }
         }
         while(iter < max_it){
-            std::cout<<iter<<std::endl;
+            //std::cout<<iter<<std::endl;
             Solution old_res = res;
             for(std::size_t i=1;i<dim-1;++i){
                 Eigen::VectorXd F = Force.row(i);
@@ -33,14 +33,29 @@ namespace edp{
         int mpi_size;
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
         if(mpi_size==1){
-            A = Solution :: Ones(dim,dim);
-            A = (1.0/(h*h))*A;
-            A.block(1, 1, dim - 1, dim - 1) *= 4.0;
+            A = Solution :: Zero(dim,dim);
+            for(std::size_t i=1;i<dim-1;++i){
+                for(std::size_t j=1;j<dim-1;++j){
+                    if(i==j){
+                        A(i,j) = 1.0;
+                    }else{
+                        A(i,j) = 1.0/(h*h);
+                    }
+                }
+            }
+            A(0,0) = 1.0;
+            A(dim-1,dim-1) = 1.0;
+            std::cout<<A<<std::endl;
         }else{
             if(mpi_rank==0){
-                 A = Solution :: Ones(dim,dim);
-                A = (1.0/(h*h))*A;
-                A.block(1, 1, dim - 1, dim - 1) *= 4.0;
+                A = Solution :: Zero(dim,dim);
+                for(std::size_t i=0;i<dim;++i){
+                    A(i,i) = 4.0/(h*h);
+                    if(i-1>0 and i+1<dim ){
+                        A(i,i-1) = -1.0/(h*h);
+                        A(i,i+1) = -1.0/(h*h);
+                        }
+                }
             }
             MPI_Bcast(A.data(), dim*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         }

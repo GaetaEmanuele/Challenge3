@@ -10,6 +10,7 @@
 #include <omp.h>
 #include <vector>
 #include "JacobianTraits.hpp"
+#include "write_vtk.hpp"
 namespace edp{
     class convergence_test{
         private:
