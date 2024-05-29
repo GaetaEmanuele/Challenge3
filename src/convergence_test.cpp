@@ -7,7 +7,10 @@ namespace edp{
         Eigen::RowVectorXd error(n.size());
         for(std::size_t i=0;i< n.size();++i){
             double h = 1.0/(static_cast<double>(n(i)-1));
-            error(i) = std::sqrt(h* compute_error(n(i)));   
+            double err = compute_error(n(i));
+            error(i) = std::sqrt(h* err);
+            if(mpi_rank==0){
+                std::cout<<"iter: "<<i<<std::endl;}   
             }
         if(mpi_size ==1){
             std::ofstream outFile(path_serial);
@@ -35,15 +38,15 @@ namespace edp{
         int mpi_rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
         if(mpi_size ==1){
-             Eigen::RowVectorXd xn = Eigen::RowVectorXd::LinSpaced(n, x0, xN);
+             JacobianSolver solver(Forcing,1e6,1e-3,n);
+             Eigen::RowVectorXd xn = Eigen::VectorXd::LinSpaced(n, 0.0, 1.0);
+             Solution U_app = solver.solve();
+             //Solution Uex = Solution::Zero(n,n);
              double sum=0.0;
              for(std::size_t i=1;i<n-1;++i){
                 for(std::size_t j=1;j<n-1;++j){
-                    auto x = xn(j);
-                    auto y = xn(i);
-                    double F = Forcing(x,y);
-                    double U = uex(x,y);
-                    sum += (F-U)*(F-U);
+                    double ue = uex(xn(j),xn(i)); 
+                    sum += (U_app(i,j)-ue)*(U_app(i,j)-ue);
                 }
              }
              return sum;
@@ -69,22 +72,26 @@ namespace edp{
             MPI_Scatter(count_recv.data(),1,MPI_INT, &local_n_row,1,MPI_INT,0,MPI_COMM_WORLD);
             MPI_Bcast(displacements.data(), mpi_size, MPI_INT, 0, MPI_COMM_WORLD);
             int j = displacements[mpi_rank];
-            Eigen::RowVectorXd xn = Eigen::RowVectorXd::LinSpaced(n, x0, xN);
-            Eigen::RowVectorXd xn_loc(local_n_row);
-            for(int i=0;i<local_n_row;++i){
+            JacobianSolver solver(Forcing,1e6,1e-3,n,task);
+            Eigen::RowVectorXd xn = Eigen::VectorXd::LinSpaced(n, 0.0, 1.0);
+            /*Eigen::RowVectorXd xn_loc(local_n_row);
+            for(std::size_t i=0;i<local_n_row;++i){
                 xn_loc(i)=xn(j);
                 ++j;
-            }
-            double global_err=0;
-            double local_err=0;
+            }*/
+            Solution res = solver.solve();
+            MPI_Bcast(res.data(), n*n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            j = displacements[mpi_rank];
+            double global_err=0.0;
+            double local_err=0.0;
             #pragma omp parallel for num_threads(task) collapse(2)
-            for(std::size_t i=0;i<local_n_row;++i){
-                for(std::size_t j=0;j<n;++j){
-                    auto x = xn(j);
-                    auto y = xn_loc(i);
-                    double F = Forcing(x,y);
-                    double U = uex(x,y);
-                    local_err += (F-U)*(F-U);
+            for(std::size_t i=j;i<(j+local_n_row);++i){
+                for(std::size_t jj=0;jj<n;++jj){
+                    auto x = xn(jj);
+                    auto y = xn(i-j);
+                    double U = res(i,jj);
+                    double U_ex = uex(x,y);
+                    local_err += (U-U_ex)*(U-U_ex);
                 }
              }
             MPI_Allreduce(&local_err, &global_err, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);

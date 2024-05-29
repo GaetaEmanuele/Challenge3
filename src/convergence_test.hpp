@@ -11,6 +11,7 @@
 #include <vector>
 #include "JacobianTraits.hpp"
 #include "write_vtk.hpp"
+#include "JacobianSolver.hpp"
 namespace edp{
     class convergence_test{
         private:
@@ -27,12 +28,12 @@ namespace edp{
             Eigen::RowVectorXd xn;
         public:
             convergence_test(const Fun& uex_,const Fun& F,const Eigen::RowVectorXd& N,const int& size):uex(uex_),Forcing(F),n(N),mpi_size(size){
-                path_serial = "../test/Data/serial_conv_test.vtk";
-                path_parallel = "../test/Data/parallel_conv_test.vtk";
+                path_serial = "../test/Data/serial_conv_test.txt";
+                path_parallel = "../test/Data/parallel_conv_test.txt";
             };
             convergence_test(const Fun& uex_,const Fun& F,const Eigen::RowVectorXd& N,const int& size,const int& Task):uex(uex_),Forcing(F),n(N),mpi_size(size),task(Task){
-                path_serial = "../test/Data/serial_conv_test.vtk";
-                path_parallel = "../test/Data/parallel_conv_test.vtk";
+                path_serial = "../test/Data/serial_conv_test.txt";
+                path_parallel = "../test/Data/parallel_conv_test.txt";
             };
             //This method will save in Data the .vtx file needed for plotting
             void plot()const;

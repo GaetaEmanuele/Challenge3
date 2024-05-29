@@ -15,7 +15,7 @@ namespace edp{
 class JacobianSolver {
     protected:
         Fun f;
-        double max_it;
+        std::size_t max_it;
         double eps;
         bool convergence = false;
         double compute_error(const Solution& res,const Solution& res1);
@@ -37,7 +37,7 @@ class JacobianSolver {
         void perform_communications(const int& mpi_rank,const int& mpi_size,Eigen::VectorXd& row_under_sent, Eigen::VectorXd& row_over_sent,Eigen::VectorXd& row_under_receive, Eigen::VectorXd& row_over_receive);
     public:
         //the constructor that will be called by the serial version
-        JacobianSolver(const Fun& f_,double max_it_,double tol,unsigned int dim_):f(f_),max_it(max_it_),eps(tol),dim(dim_){};
+        JacobianSolver(const Fun& f_,std::size_t max_it_,double tol,unsigned int dim_):f(f_),max_it(max_it_),eps(tol),dim(dim_){};
         //the constructor that will be called by the parallel one
         JacobianSolver(const Fun& f_,double max_it_,double tol,unsigned int dim_,int task_):f(f_),max_it(max_it_),eps(tol),dim(dim_),task(task_){};
         virtual Solution solve();
@@ -45,6 +45,7 @@ class JacobianSolver {
         bool is_converged()const {return convergence;} ;
         Eigen::VectorXd get_nodes()const{return xn;};
         double get_h()const{return h;};
+        Solution get_res_loc()const{return res_loc;};
         Timings::Chrono chrono; //this is used by the programmer for trying to understnd 
         //what part of the solution is the bottleneck of the performance
 

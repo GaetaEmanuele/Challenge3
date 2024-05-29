@@ -4,23 +4,21 @@ namespace edp{
     Solution Dirichlet_om:: solve(){
         std::size_t iter = 0;
         for(std::size_t i=0;i<dim;++i){
+            auto y = xn(i);
             for(std::size_t j=0;j<dim;++j){
-                auto y = xn(i);
                 auto x = xn(j);
                 Force(i,j) = f(x,y);
+                res(j,0) = bd_cond(0,x);
+                res(j,dim-1) = bd_cond(0,x);
             }
+            res(0,i) = bd_cond(0,y);
+            res(dim-1,i) = bd_cond(0,y); 
         }
         while(iter < max_it){
             Solution old_res = res;
             for(std::size_t i=0;i<dim;++i){
                 for(std::size_t j=0;j<dim;++j){
-                    if(i==0 or j==0){
-                        auto y = xn(i);
-                        auto x = xn(j);
-                        res(i,j) = bd_cond(x,y); 
-                    }else{
-                        res(i,j) = 0.25 * (res(i-1,j)+res(i+1,j)+res(i,j-1)+res(i,j+1)+h*h*Force(i,j));
-                    }
+                    res(i,j) = 0.25 * (res(i-1,j)+res(i+1,j)+res(i,j-1)+res(i,j+1)+h*h*Force(i,j));
                 }
             }
             double error = compute_error(res,old_res);
@@ -79,6 +77,9 @@ namespace edp{
                 auto y=xn_loc(i);
                 local_Force(i,j) = f(x,y); 
                 if(i==0 or j==0){
+                    res_loc(i,j) = bd_cond(x,y);
+                }
+                if(i==dim-1 or j==dim-1){
                     res_loc(i,j) = bd_cond(x,y);
                 }
             }

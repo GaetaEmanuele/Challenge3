@@ -14,8 +14,9 @@ namespace edp{
             //std::cout<<iter<<std::endl;
             Solution old_res = res;
             for(std::size_t i=1;i<dim-1;++i){
+                Solution Ai = A.block(dim * (i - 1), dim * (i - 1), dim, dim);
                 Eigen::VectorXd F = Force.row(i);
-                Eigen::PartialPivLU<Eigen::MatrixXd> lu(A);
+                Eigen::PartialPivLU<Eigen::MatrixXd> lu(Ai);
                 res.row(i) = lu.solve(F);
             }
             double error = compute_error(res,old_res);
@@ -33,19 +34,36 @@ namespace edp{
         int mpi_size;
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
         if(mpi_size==1){
-            A = Solution :: Zero(dim,dim);
-            for(std::size_t i=1;i<dim-1;++i){
-                for(std::size_t j=1;j<dim-1;++j){
-                    if(i==j){
-                        A(i,j) = 1.0;
-                    }else{
-                        A(i,j) = 1.0/(h*h);
-                    }
+            A = Solution :: Zero(dim*dim,dim*dim);
+            double inv_h2 = 1.0 / (h * h);
+        for (int i = 0; i < dim; ++i) {
+            for (int j = 0; j < dim; ++j) {
+                int index = i * dim + j;
+
+                // Coefficiente centrale
+                A(index, index) = 4 * inv_h2;
+            
+                // Coefficiente a sinistra
+                if (j > 0) {
+                    A(index, index - 1) = -inv_h2;
+                }
+            
+                // Coefficiente a destra
+                if (j < dim - 1) {
+                    A(index, index + 1) = -inv_h2;
+                }
+            
+                // Coefficiente sopra
+                if (i > 0) {
+                    A(index, index - dim) = -inv_h2;
+                }
+            
+                // Coefficiente sotto
+                if (i < dim - 1) {
+                    A(index, index + dim) = -inv_h2;
                 }
             }
-            A(0,0) = 1.0;
-            A(dim-1,dim-1) = 1.0;
-            std::cout<<A<<std::endl;
+        }
         }else{
             if(mpi_rank==0){
                 A = Solution :: Zero(dim,dim);

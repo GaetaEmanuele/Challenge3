@@ -13,6 +13,7 @@
 #include "convergence_test.hpp"
 #include "Schwartz.hpp"
 #include "write_vtk.hpp"
+#include "gnuplot.hpp"
 using json = nlohmann::json;
 
 
@@ -45,13 +46,13 @@ int main (int argc, char **argv){
         json data = json::parse(f);
         std::string funString = data["fun"];
         unsigned int dim = std::stoi(data["n"].get<std::string>());
-        double it = std::stod(data["max_it"].get<std::string>());
+        std::size_t it = std::stoi(data["max_it"].get<std::string>());
         double eps = std::stod(data["Tol"].get<std::string>());
         //MuparserFun F(funString);
         edp :: JacobianSolver solver(F,it,eps,dim);
-        edp :: Schwartz solver1(F,it,eps,dim);
+        //edp :: Schwartz solver1(F,it,eps,dim);
         edp :: Solution  result = solver.solve();
-        std::cout<<solver1.solve()<<std::endl;
+        //std::cout<<solver1.solve()<<std::endl;
         std::cout<<std::endl;
         chrono.start();
         Eigen::VectorXd xn = solver.get_nodes();
@@ -62,6 +63,9 @@ int main (int argc, char **argv){
         std::string relativePath = "../test/Data/serial_result.vtk";
         edp::convergence_test Test(Uex,F,n,mpi_size);
         Test.plot();
+        std::string path1 = "../test/Data/serial_conv_test.txt";
+        std::string outputFilePath1 = "../test/Data/sequential_err.txt";
+        edp::gnuplot(path1,outputFilePath1);
         //Definitio of the targhet 
         double h = solver.get_h();
         edp :: generateVTKFile(relativePath,result,dim,dim,h,h);
@@ -73,7 +77,8 @@ int main (int argc, char **argv){
             std::cout<<"PARALLEL VERSION"<<std::endl;
         }
         unsigned int DIM,task,size_f;
-        double max_it,tollerance;
+        std::size_t max_it;
+        double tollerance;
         std::string funString;
         if(mpi_rank==0){
             std::ifstream file("../test/data.json");
@@ -89,7 +94,7 @@ int main (int argc, char **argv){
         //MPI_Bcast(&funString,size_f,MPI_CHAR,0,mpi_comm);
         MPI_Bcast(&DIM, 1, MPI_INT, 0, mpi_comm);
         MPI_Bcast(&task, 1, MPI_INT, 0, mpi_comm);
-        MPI_Bcast(&max_it, 1, MPI_DOUBLE, 0, mpi_comm);
+        MPI_Bcast(&max_it, 1, MPI_UNSIGNED, 0, mpi_comm);
         MPI_Bcast(&tollerance, 1, MPI_DOUBLE, 0, mpi_comm);
         //MuparserFun F(funString);
         edp :: JacobianSolver solver2(F,max_it,tollerance,DIM,task);
@@ -104,6 +109,10 @@ int main (int argc, char **argv){
             edp :: generateVTKFile(relativePath,result,DIM,DIM,h,h);
         }
         Test.plot();
+        std::string path2 = "../test/Data/parallel_conv_test.txt";
+        std::string outputFilePath2 = "../test/Data/parallel_err.txt";
+        if(mpi_rank==0){
+        edp:: gnuplot(path2,outputFilePath2);}
     }
     MPI_Finalize();
 

@@ -3,18 +3,19 @@
 namespace edp{
     Solution JacobianSolver :: solve(){
         std::size_t iter = 0;
-        for(std::size_t i=0;i<dim;++i){
-            for(std::size_t j=0;j<dim;++j){
-                auto y = xn(i);
-                auto x = xn(j);
-                Force(i,j) = f(x,y);
+        for(int i=0;i<dim;++i){
+            double y = xn(i);
+            for(int j=0;j<dim;++j){
+                    double x = xn(j);
+                    Force(i,j) = f(x,y);
             }
         }
+
         while(iter < max_it){
             Solution old_res = res;
             for(std::size_t i=1;i<dim-1;++i){
                 for(std::size_t j=1;j<dim-1;++j){
-                    res(i,j) = 0.25 * (res(i-1,j)+res(i+1,j)+res(i,j-1)+res(i,j+1)+h*h*Force(i,j));
+                    res(i,j) = 0.25 * (old_res(i-1,j)+old_res(i+1,j)+old_res(i,j-1)+old_res(i,j+1)+h*h*Force(i,j));
                 }
             }
             double error = compute_error(res,old_res);
@@ -26,13 +27,14 @@ namespace edp{
         return res;
     }
 
-    double JacobianSolver :: compute_error(const Solution& res,const Solution& old_res){
+ inline   double JacobianSolver :: compute_error(const Solution& res,const Solution& old_res){
         double error=0.0;
 
         #pragma omp parallel for num_threads(task) collapse(2)
         for(std::size_t i=0;i<local_n_row;++i){
             for(std::size_t j=0;j<dim;++j){
-                error += (res(i,j)-old_res(i,j))*(res(i,j)-old_res(i,j));
+                double t = (res(i,j)-old_res(i,j))*(res(i,j)-old_res(i,j));
+                error += t;
             }
         }
         error = std::sqrt(h*error);
@@ -169,7 +171,7 @@ namespace edp{
         }
     }
 
-  void JacobianSolver:: join_solution(){
+inline  void JacobianSolver:: join_solution(){
     int mpi_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
 
@@ -199,7 +201,7 @@ namespace edp{
     }
     } 
 
-void JacobianSolver::perform_communications(const int& mpi_rank,const int& mpi_size,Eigen::VectorXd& row_under_sent, Eigen::VectorXd& row_over_sent,
+inline void JacobianSolver::perform_communications(const int& mpi_rank,const int& mpi_size,Eigen::VectorXd& row_under_sent, Eigen::VectorXd& row_over_sent,
                                              Eigen::VectorXd& row_under_receive, Eigen::VectorXd& row_over_receive) {
 //Since this function will be called in a iterative loop 
 //i will pass the information of rank and size since this will reduce the time needed 
